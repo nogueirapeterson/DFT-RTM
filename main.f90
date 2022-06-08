@@ -41,7 +41,7 @@ program main
 	allocate(fonte(nt), sx(ns), D(nt,nx))
  	  
         open (unit=9, file=velfile,  form='unformatted', access='direct', recl=nz*nx*4)
-        write(9,rec=1) vel(nb+1:nb+nz,nb+1:nx+nb)
+        read(9,rec=1) vel(nb+1:nb+nz,nb+1:nx+nb)
         close(9)
         
 
