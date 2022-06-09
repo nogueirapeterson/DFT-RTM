@@ -1,9 +1,9 @@
 module mdle_adds
+    implicit none
 
     contains
 
         subroutine RTM(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            implicit none
             integer               :: nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)   :: fonte(nt)
@@ -81,7 +81,6 @@ module mdle_adds
         end subroutine RTM
 
         subroutine modelagem (is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
-            implicit none
             integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx)
             real,dimension (:)     :: fonte(nt)
@@ -126,7 +125,6 @@ module mdle_adds
         end subroutine modelagem
 
         subroutine RTM_DFT(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            implicit none
             integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order, nw, iw, nw_i, nw_f
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)     :: fonte(nt)
@@ -232,8 +230,9 @@ module mdle_adds
         end subroutine RTM_DFT
 
         subroutine atenuacao(nxb,nzb,nb,p2)
-
+            integer               :: nxb, nzb, nb
             real, dimension (:,:) :: p2(nzb,nxb)
+            integer               :: i, j, lx, lz
 
             lz=nzb
             do i =1,nb
@@ -257,10 +256,8 @@ module mdle_adds
         end subroutine atenuacao
 
         subroutine makevelextend(nz,nx,nzb,nxb,nb,c,cext)
-
-            implicit none
-            real, dimension (:,:)     :: c(nz,nx), cext(nzb,nxb)
-            integer         :: nz,nx,nb,nzb,nxb,iz,ix
+            integer               :: nz,nx,nb,nzb,nxb,iz,ix
+            real, dimension (:,:) :: c(nz,nx), cext(nzb,nxb)
 
             !Região Central
 
@@ -291,7 +288,6 @@ module mdle_adds
         !====================================================================================
         subroutine source(nt, dt, fpeak, fonte)
 
-            implicit none
             integer            :: nt
             real               :: dt, fpeak
             real, dimension(:) :: fonte(nt)
@@ -318,7 +314,6 @@ module mdle_adds
         !==================================================================
         subroutine get_sponge(ctap, lsp, frac)
 
-            implicit none
             integer            :: lsp
             real               :: frac
             real, dimension(:) :: ctap(lsp)
@@ -345,7 +340,6 @@ module mdle_adds
         !==================================================================
         subroutine taper_apply(pp, nxb, nzb, nb, taper)
 
-            implicit none
             integer              :: nxb, nzb, nb
             real, dimension(:,:) :: pp(nzb,nxb), taper(nb)
 
