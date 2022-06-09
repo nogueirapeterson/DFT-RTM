@@ -3,15 +3,15 @@ module mdle_adds
 
     contains
 
-        subroutine RTM(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            integer               :: nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order
+        subroutine RTM(nx, nz, nt, dx, dz, dt, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
+            integer               :: nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)   :: fonte(nt)
 
             real, allocatable    :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
             real, allocatable    :: CF(:,:,:)
             real, allocatable    :: coef(:)
-            real                 :: dt, dz, dx, fmax
+            real                 :: dt, dz, dx
 
             order = 8
 
@@ -80,14 +80,14 @@ module mdle_adds
 
         end subroutine RTM
 
-        subroutine modelagem (is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
-            integer ::  nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order
+        subroutine modelagem (nx, nz, nt, dx, dz, dt, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
+            integer ::  nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx)
             real,dimension (:)     :: fonte(nt)
 
             real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
             real, allocatable    ::   coef(:)
-            real                 :: dt, dz, dx, fmax
+            real                 :: dt, dz, dx
 
             order = 8
 
@@ -124,8 +124,8 @@ module mdle_adds
 
         end subroutine modelagem
 
-        subroutine RTM_DFT(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            integer ::  nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order, nw, iw, nw_i, nw_f
+        subroutine RTM_DFT(nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
+            integer ::  nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order, nw, iw, nw_i, nw_f
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)     :: fonte(nt)
 

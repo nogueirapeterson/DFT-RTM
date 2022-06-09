@@ -63,9 +63,9 @@ program main
 
         !subrotina que faz a RTM
 
-        call modelagem (is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx(is), sz, gz, vel(nb+1:nz+nb,nb+1:nx+nb), D)
+        call modelagem (nx, nz, nt, dx, dz, dt, fonte, nb, nxb, nzb, sx(is), sz, gz, vel(nb+1:nz+nb,nb+1:nx+nb), D)
 
-        call RTM_DFT(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx(is), sz, gz, vel(nb+1:nz+nb,nb+1:nx+nb), D,Im)
+        call RTM_DFT(nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx(is), sz, gz, vel(nb+1:nz+nb,nb+1:nx+nb), D,Im)
 
 
         Imt = Imt + Im(nb+1:nb+nz,nb+1:nx+nb)
