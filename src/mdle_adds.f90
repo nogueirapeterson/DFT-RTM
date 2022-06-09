@@ -4,7 +4,7 @@ module mdle_adds
     contains
 
         subroutine RTM(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            integer               :: nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
+            integer               :: nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)   :: fonte(nt)
 
@@ -81,7 +81,7 @@ module mdle_adds
         end subroutine RTM
 
         subroutine modelagem (is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
-            integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
+            integer ::  nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx)
             real,dimension (:)     :: fonte(nt)
 
@@ -125,7 +125,7 @@ module mdle_adds
         end subroutine modelagem
 
         subroutine RTM_DFT(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-            integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order, nw, iw, nw_i, nw_f
+            integer ::  nzb, nxb, is, it, sz, sx, nb, nt, nz, nx, rsz, order, nw, iw, nw_i, nw_f
             real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
             real,dimension (:)     :: fonte(nt)
 

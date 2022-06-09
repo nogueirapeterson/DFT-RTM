@@ -13,11 +13,11 @@ program main
     !use mdle_mdlem
 
     implicit none
-    integer           :: nz, nx, nt, nb, sz, ns, s0x, gz, fz, iz, ds
+    integer           :: nz, nx, nt, nb, sz, ns, s0x, gz, ds
     real              :: dz, dx, dt, fpeak, fmax
-    character(len=64) :: velfile, argfile, dadofile, vtrue_file
+    character(len=64) :: velfile, dadofile, vtrue_file
 
-    integer              :: i, ix, j, is, it, nzb, nxb
+    integer              :: i, is, nzb, nxb
     integer, allocatable :: sx(:)
     real, allocatable    :: vel(:,:), fonte(:), D(:,:), Im(:,:), Imt(:,:), Im_tmp(:,:)
 
