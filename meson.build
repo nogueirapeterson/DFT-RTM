@@ -5,5 +5,5 @@ project('DFT-RTM', 'fortran',
 executable('DFT-RTM',
            'src/mdle_adds.f90',
            'src/mdle_io_utils.f90',
-           'src/main.f90',
+           'app/main.f90',
            install : true)

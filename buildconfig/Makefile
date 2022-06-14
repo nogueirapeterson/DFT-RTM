@@ -2,7 +2,7 @@ PROG = main
 F90 = gfortran
 #F90 = ifort
 FLAGS= -g -O3 #-fopenmp
-MAIN= ../src/main.f90
+MAIN= ../app/main.f90
 MODS= ../src/mdle_io_utils.f90 ../src/mdle_adds.f90
 
 
