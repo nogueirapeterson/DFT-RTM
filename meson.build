@@ -2,6 +2,8 @@ project('DFT-RTM', 'fortran',
   version : '0.1',
   default_options : ['warning_level=3'])
 
+subdir('external')
+
 executable('DFT-RTM',
            'src/mdle_adds.f90',
            'src/mdle_io_utils.f90',
