@@ -19,7 +19,7 @@ module mdle_io_utils
 
             character(len=64) :: argfile
 
-            if(1.ne.iargc()) then
+            if(1 /= command_argument_count()) then
                 print*,'wrong number of arguments'
                 stop
             endif

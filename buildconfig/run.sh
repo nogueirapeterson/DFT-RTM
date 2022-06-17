@@ -1,5 +1,3 @@
 #!/bin/bash
 
-time -f "%E" ./main input.dat
-
-
+time ./main input.dat
