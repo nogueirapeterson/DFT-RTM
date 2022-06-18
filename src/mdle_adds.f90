@@ -235,7 +235,7 @@ module mdle_adds
             integer               :: i, j, lx, lz
 
             lz=nzb
-            !$ 
+            !$
             do i =1,nb
                 do j=1,nxb
                     p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2

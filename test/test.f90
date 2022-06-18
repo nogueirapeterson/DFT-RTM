@@ -70,7 +70,13 @@ program test
     call plt%initialize(legend=.true.)
     call plt%add_imshow(Imt)
     call plt%savefig('img.png', pyfile = 'img.py')
-    call plt%showfig()
+    !call plt%showfig()
+
+    open (unit=20, file='imagem-ref.dir',  form='unformatted', access='direct', recl=nz*nx*4)
+    read(20,rec=1) Im_tmp
+    close(20)
+
+    print*, "Residual", sum(abs(Im_tmp) - abs(Imt))/(nx * nz)
 
     open (unit=2, file='imagem.dir',  form='unformatted', access='direct', recl=nz*nx*4)
     write(2,rec=1) Imt
