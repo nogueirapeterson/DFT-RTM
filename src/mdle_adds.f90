@@ -31,7 +31,6 @@ module mdle_adds
                 call atenuacao (nxb,nzb,nb,p0)
                 call atenuacao (nxb,nzb,nb,p1)
 
-
                 call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
                 p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
@@ -235,22 +234,19 @@ module mdle_adds
             integer               :: i, j, lx, lz
 
             lz=nzb
-            !$
             do i =1,nb
                 do j=1,nxb
                     p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2
-                    p2(lz,j)=p2(lz,j)*(exp(-1*(0.0005*(nb-i))))**2
+                    p2(nzb-i+1,j)=p2(nzb-j+1,j)*(exp(-1*(0.0005*(nb-i))))**2
                 enddo
-                lz=lz-1
             enddo
 
             lx=nxb
             do i =1,nb
                 do j=1,nzb
                     p2(j,i)=p2(j,i)*(exp(-1*(0.0005*(nb-i))))**2
-                    p2(j,lx)=p2(j,lx)*(exp(-1*(0.0005*(nb-i))))**2
+                    p2(j,nxb-i+1)=p2(j,nxb-i+1)*(exp(-1*(0.0005*(nb-i))))**2
                 enddo
-                lx=lx-1
             enddo
 
             return
