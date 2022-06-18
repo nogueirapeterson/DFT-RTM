@@ -1,4 +1,3 @@
-
 ! Este é um código Fortran 90 da implementação da técnica RTM no domínio tempo-frequência utilizando um kernel de Fourier.
 ! Título : Migração reversa no tempo no domínio tempo-frequência utilizando kernel da transformada discreta de Fourier (DFT-RTM)
 ! Autor : Peterson Nogueira

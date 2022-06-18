@@ -4,6 +4,8 @@ F90 = nvfortran
 FLAGS= -g -O3 -acc -Minfo=all -ta=multicore #-fopenmp
 MAIN= ../app/main.f90
 MODS= ../src/mdle_io_utils.f90 ../src/mdle_adds.f90
+PYPLOT= ../external/pyplot-fortran/src/pyplot_module.F90
+TEST=../test/test.f90
 
 
 all:
@@ -14,5 +16,14 @@ all:
 	#qsub run.sh
 clean:
 	rm $(PROG) *.o *.mod *~ *.dir
+
+test: $(MODS) $(TEST)
+	$(F90) -c $(PYPLOT) $(MODS) $(FLAGS)
+	$(F90) -c $(PYPLOT) $(FLAGS) -cpp -DREAL32
+	$(F90) -c $(TEST) $(FLAGS)
+	$(F90) *.o -o test $(FLAGS)
+	rm *.o *.mod
+
+
 
 
