@@ -230,24 +230,23 @@ module mdle_adds
 
         subroutine atenuacao(nxb,nzb,nb,p2)
             integer               :: nxb, nzb, nb
-            real, dimension (:,:) :: p2(nzb,nxb)
+            real, dimension (:,:) :: p2(nzb,nxb), paux(nzb,nxb)
             integer               :: i, j, lx, lz
 
-            lz=nzb
-            do i =1,nb
-                do j=1,nxb
+            !$acc kernels
+            do concurrent (i=1:nb, j=1:nxb)
                     p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2
-                    p2(nzb-i+1,j)=p2(nzb-j+1,j)*(exp(-1*(0.0005*(nb-i))))**2
-                enddo
             enddo
-
-            lx=nxb
-            do i =1,nb
-                do j=1,nzb
+            do concurrent (i=1:nb, j=1:nxb)
+                    p2(nzb-i+1,j)=p2(nzb-i+1,j)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            do concurrent (i=1:nb, j=1:nzb)
                     p2(j,i)=p2(j,i)*(exp(-1*(0.0005*(nb-i))))**2
-                    p2(j,nxb-i+1)=p2(j,nxb-i+1)*(exp(-1*(0.0005*(nb-i))))**2
-                enddo
             enddo
+            do concurrent (i=1:nb, j=1:nzb)
+                    p2(j,nxb-i+1)=p2(j,nxb-i+1)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            !$acc end kernels
 
             return
         end subroutine atenuacao

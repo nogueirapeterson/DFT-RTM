@@ -76,7 +76,7 @@ program test
     read(20,rec=1) Im_tmp
     close(20)
 
-    print*, "Residual", sum(abs(Im_tmp) - abs(Imt))/(nx * nz)
+    print*, "Residual", sum(abs(Im_tmp - Imt))/(nx * nz)
 
     open (unit=2, file='imagem.dir',  form='unformatted', access='direct', recl=nz*nx*4)
     write(2,rec=1) Imt
