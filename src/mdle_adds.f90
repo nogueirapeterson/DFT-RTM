@@ -98,7 +98,9 @@ module mdle_adds
 
             call calc_coef(order, coef)
 
+            !$acc kernels
             p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0.
+            !$acc end kernels
 
             do it = 1, nt
 
@@ -107,12 +109,14 @@ module mdle_adds
 
                 call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
+                !$acc kernels
                 p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
                 p2(sz,sx) = p2(sz,sx) + fonte(it)
 
 
                 scg(it,:) = p2(rsz,nb+1:nx+nb)
+                !$acc end kernels
 
                 p0 = p1
                 p1 = p2
@@ -161,16 +165,20 @@ module mdle_adds
 
             call calc_coef(order, coef)
 
+            !$acc kernels
             p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. ; Im = 0.
 
             pr0  =  0. ; pr1  =  0. ; pr2  =  0. ; Lr = 0.
 
             psr = 0. ; psi=0. ; prr=0. ; pri = 0.
+            !$acc end kernels
 
+            !$acc parallel loop
             do iw = 1, nw
                 w(iw) = 2.*acos(-1.)*((iw-1)*df)*dt  ! Vetor de frequências
             end do
 
+            !$acc parallel loop collapse(2)
             do it = 1, nt
                 do iw = 1, nw
                     kr(iw, it) = cos(w(iw)*(it-1)) ! Kernel parte real
@@ -185,26 +193,26 @@ module mdle_adds
 
                 call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
-            !    !$acc kernels
+                !$acc kernels
                 p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
                 p2(sz,sx) = p2(sz,sx) + fonte(it)
-            !    !$acc end kernels
+                !$acc end kernels
 
                 call atenuacao (nxb,nzb,nb,pr0)
                 call atenuacao (nxb,nzb,nb,pr1)
 
                 call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr)
 
-            !    !$acc kernels
+                !$acc kernels
                 pr2 = 2*pr1 - pr0 + (dt**2)*(cext**2)*Lr
 
                 pr2(rsz,nb+1:nx+nb) = pr2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
-            !    !$acc end kernels
+                !$acc end kernels
 
                 !psr = 0. ; psi = 0. ; prr = 0. ; pri = 0.
 
-             !   !$acc kernels
+                !$acc kernels
                 do iw = 1, nw
 
                     psr(:,:,iw) = psr(:,:,iw) + kr(iw, it)*p2  ! Aplica kernel parte real campo da fonte
@@ -218,7 +226,7 @@ module mdle_adds
                     !Im = Im + (psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
 
                 end do
-             !   !$acc end kernels
+                !$acc end kernels
 
                 p0 = p1
                 p1 = p2
