@@ -7,6 +7,7 @@ MODS= ../src/mdle_io_utils.f90 ../src/mdle_adds.f90
 PYPLOT= ../external/pyplot-fortran/src/pyplot_module.F90
 TEST=../test/test.f90
 TEST1=../test/test_atenuation.f90
+TEST2=../test/test_laplace.f90
 
 
 all:
@@ -33,6 +34,12 @@ test1: $(MODS) $(TEST)
 	$(F90) *.o -o test-att $(FLAGS)
 	rm *.o *.mod
 
+test2: $(MODS) $(TEST)
+	$(F90) -c $(PYPLOT) $(MODS) $(FLAGS)
+	$(F90) -c $(PYPLOT) $(FLAGS) -cpp -DREAL32
+	$(F90) -c $(TEST2) $(FLAGS)
+	$(F90) *.o -o test-opL $(FLAGS)
+	rm *.o *.mod
 
 
 

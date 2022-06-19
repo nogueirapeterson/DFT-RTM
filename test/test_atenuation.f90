@@ -2,7 +2,7 @@ program test_atenuation
     use mdle_adds
     use pyplot_module
     integer,parameter:: nz=101, nx=101, nb=20
-    real:: A(nz+2*nb,nz+2*nb)
+    real:: A(nz+2*nb,nx+2*nb)
     type(pyplot) :: plt
 
     A = 1.0

@@ -185,21 +185,26 @@ module mdle_adds
 
                 call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
+            !    !$acc kernels
                 p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
                 p2(sz,sx) = p2(sz,sx) + fonte(it)
+            !    !$acc end kernels
 
                 call atenuacao (nxb,nzb,nb,pr0)
                 call atenuacao (nxb,nzb,nb,pr1)
 
                 call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr)
 
+            !    !$acc kernels
                 pr2 = 2*pr1 - pr0 + (dt**2)*(cext**2)*Lr
 
                 pr2(rsz,nb+1:nx+nb) = pr2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
+            !    !$acc end kernels
 
                 !psr = 0. ; psi = 0. ; prr = 0. ; pri = 0.
 
+             !   !$acc kernels
                 do iw = 1, nw
 
                     psr(:,:,iw) = psr(:,:,iw) + kr(iw, it)*p2  ! Aplica kernel parte real campo da fonte
@@ -213,6 +218,7 @@ module mdle_adds
                     !Im = Im + (psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
 
                 end do
+             !   !$acc end kernels
 
                 p0 = p1
                 p1 = p2
@@ -426,8 +432,8 @@ module mdle_adds
             lim_nx = nx-(a/2)
             lim_nz = nz-(a/2)
 
+            !$acc parallel loop collapse(2) private(Pxx, Pzz) independent
             do i=in_n,lim_nx
-
                 do j=in_n,lim_nz
 
                     Pxx = 0.0
@@ -440,7 +446,7 @@ module mdle_adds
 
                     enddo
 
-                lap_p(j,i) = Pxx/(dx**2) + Pzz/(dz**2)
+                    lap_p(j,i) = Pxx/(dx**2) + Pzz/(dz**2)
 
                 enddo
             enddo
