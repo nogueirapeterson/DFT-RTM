@@ -188,29 +188,31 @@ module mdle_adds
 
             do it = 1, nt
 
-                call atenuacao (nxb,nzb,nb,p0)
-                call atenuacao (nxb,nzb,nb,p1)
+                call atenuacao (nxb,nzb,nb,p0, thread=1)
+                call atenuacao (nxb,nzb,nb,p1, thread=1)
 
-                call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
+                call op_l(order,coef, nzb,nxb,dz,dx,p1,L, thread=1)
 
-                !$acc kernels
+                !$acc kernels async(1)
                 p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
                 p2(sz,sx) = p2(sz,sx) + fonte(it)
                 !$acc end kernels
 
-                call atenuacao (nxb,nzb,nb,pr0)
-                call atenuacao (nxb,nzb,nb,pr1)
+                call atenuacao (nxb,nzb,nb,pr0, thread=2)
+                call atenuacao (nxb,nzb,nb,pr1, thread=2)
 
-                call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr)
+                call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr, thread=2)
 
-                !$acc kernels
+                !$acc kernels async(2)
                 pr2 = 2*pr1 - pr0 + (dt**2)*(cext**2)*Lr
 
                 pr2(rsz,nb+1:nx+nb) = pr2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
                 !$acc end kernels
 
                 !psr = 0. ; psi = 0. ; prr = 0. ; pri = 0.
+
+                !$acc wait(1,2)
 
                 !$acc kernels
                 do iw = 1, nw
@@ -242,12 +244,19 @@ module mdle_adds
 
         end subroutine RTM_DFT
 
-        subroutine atenuacao(nxb,nzb,nb,p2)
-            integer               :: nxb, nzb, nb
-            real, dimension (:,:) :: p2(nzb,nxb), paux(nzb,nxb)
-            integer               :: i, j, lx, lz
+        subroutine atenuacao(nxb,nzb,nb,p2,thread)
+            integer,intent(in) :: nxb, nzb, nb
+            real, intent(in)   :: p2(nzb,nxb)
+            integer            :: i, j, a
+            integer, optional :: thread
 
-            !$acc kernels
+            if (present(thread)) then
+                a = thread
+            else
+                a = 1
+            end if
+
+            !$acc kernels async(a)
             do concurrent (i=1:nb, j=1:nxb)
                     p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2
             enddo
@@ -261,6 +270,8 @@ module mdle_adds
                     p2(j,nxb-i+1)=p2(j,nxb-i+1)*(exp(-1*(0.0005*(nb-i))))**2
             enddo
             !$acc end kernels
+
+            !$acc wait(1)
 
             return
         end subroutine atenuacao
@@ -423,24 +434,30 @@ module mdle_adds
 
         end subroutine calc_coef
 
-        subroutine op_l(a,coef, nz,nx,dz,dx,P,lap_P)
+        subroutine op_l(a,coef, nz,nx,dz,dx,P,lap_P, thread)
             !Subrotina que calcula o laplaciano para as ordens 2, 4, 6 e 8.
             !nx=número de amostra no eixo x parâmetro de entrada
             !nz=número de amostra no eixo x parâmetro de entrada
             !lapla = Matriz de saída representando o laplaciano
 
-            integer :: i, j, k, nx, nz, a, lim_nx, lim_nz, in_n
+            integer :: i, j, k, nx, nz, a, lim_nx, lim_nz, in_n, aux
             real :: lap_P, dx, dz, Pxx, Pzz, P
             real, dimension(:)  :: coef(a+1)
-
+            integer, optional :: thread
             dimension P(nz,nx), lap_P(nz,nx)
+
+            if (present(thread)) then
+                aux = thread
+            else
+                aux = 1
+            end if
 
             in_n = (a/2)+1
 
             lim_nx = nx-(a/2)
             lim_nz = nz-(a/2)
 
-            !$acc parallel loop collapse(2) private(Pxx, Pzz) independent
+            !$acc parallel loop collapse(2) private(Pxx, Pzz) independent async(aux)
             do i=in_n,lim_nx
                 do j=in_n,lim_nz
 

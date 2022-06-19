@@ -1,7 +1,7 @@
 PROG = main
 F90 = nvfortran
 #F90 = ifort
-FLAGS= -g -O3 -acc -Minfo=accel -ta=multicore #-fopenmp
+FLAGS= -O3 -acc -Minfo=accel -ta=multicore #-fopenmp
 MAIN= ../app/main.f90
 MODS= ../src/mdle_io_utils.f90 ../src/mdle_adds.f90
 PYPLOT= ../external/pyplot-fortran/src/pyplot_module.F90
