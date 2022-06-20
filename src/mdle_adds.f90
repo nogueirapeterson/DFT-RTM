@@ -1,544 +1,482 @@
-MODULE mdle_adds
+module mdle_adds
+    implicit none
 
-CONTAINS
+    contains
 
-subroutine RTM(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-  implicit none
-  integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
-   real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
-   real,dimension (:)     :: fonte(nt)
+        subroutine RTM(nx, nz, nt, dx, dz, dt, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
+            integer               :: nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order
+            real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
+            real,dimension (:)   :: fonte(nt)
 
-   real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
-   real, allocatable :: CF(:,:,:)
-   real, allocatable	::   coef(:)
-   real                 :: dt, dz, dx, fmax
-  
+            real, allocatable    :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
+            real, allocatable    :: CF(:,:,:)
+            real, allocatable    :: coef(:)
+            real                 :: dt, dz, dx
 
-   order = 8
+            order = 8
 
+            allocate(cext(nzb,nxb))
+            allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
+            allocate(coef(order+1))
+            allocate(CF(nz,nx,nt))
 
-   allocate(cext(nzb,nxb))
-   allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
-   allocate(coef(order+1))
-   allocate(CF(nz,nx,nt))
+            call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
 
-   call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
+            call calc_coef(order, coef)
 
-   call calc_coef(order, coef) 
+            p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. ; Im = 0.
 
-   p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. ; Im = 0.
+            do it = 1, nt
 
-   
-   do it = 1, nt
-  
-      call atenuacao (nxb,nzb,nb,p0)
-      call atenuacao (nxb,nzb,nb,p1)
+                call atenuacao (nxb,nzb,nb,p0)
+                call atenuacao (nxb,nzb,nb,p1)
 
+                call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
-      call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
+                p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
-       p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
+                p2(sz,sx) = p2(sz,sx) + fonte(it)
 
-       p2(sz,sx) = p2(sz,sx) + fonte(it)
+                CF(:,:,it) = p2(nb+1:nz+nb,nb+1:nx+nb)
 
-       CF(:,:,it) = p2(nb+1:nz+nb,nb+1:nx+nb)
-     
-       !scg(it,:) = p2(rsz,nb+1:nx+nb)
+                !scg(it,:) = p2(rsz,nb+1:nx+nb)
 
-	p0 = p1
-	p1 = p2
+                p0 = p1
+                p1 = p2
 
+            end do
 
-    end do
+            p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0.
 
-  p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0.
 
+            do it = 1,nt
 
-    do it = 1,nt
+                call atenuacao (nxb,nzb,nb,p0)
+                call atenuacao (nxb,nzb,nb,p1)
 
-	   call atenuacao (nxb,nzb,nb,p0)
-           call atenuacao (nxb,nzb,nb,p1) 
+                call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
-	   call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
+                p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
-    	   p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
+                p2(rsz,nb+1:nx+nb) = p2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
 
-	   p2(rsz,nb+1:nx+nb) = p2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
+                if (it == 100) then
 
-	   if (it == 100) then
+                    open (unit=9, file='pr2.bin',  form='unformatted', access='direct', recl=nz*nx*4)
+                    write(9,rec=1) p2(nb+1:nb+nz,nb+1:nx+nb)
+                    close(9)
 
-             open (unit=9, file='pr2.bin',  form='unformatted', access='direct', recl=nz*nx*4)
-             write(9,rec=1) p2(nb+1:nb+nz,nb+1:nx+nb)
-             close(9)
+                end if
 
-	   end if 
+                p0 = p1
+                p1 = p2
 
-  	   p0 = p1
-  	   p1 = p2
+                Im(nb+1:nz+nb,nb+1:nx+nb) = Im(nb+1:nz+nb,nb+1:nx+nb) + CF(:,:,nt-it+1)*p2(nb+1:nz+nb,nb+1:nx+nb)
 
-	   Im(nb+1:nz+nb,nb+1:nx+nb) = Im(nb+1:nz+nb,nb+1:nx+nb) + CF(:,:,nt-it+1)*p2(nb+1:nz+nb,nb+1:nx+nb)
-	
-    end do
+            end do
 
+            deallocate (p0, p2, p1, L, cext, coef, CF)
 
- deallocate (p0, p2, p1, L, cext, coef, CF)
+        end subroutine RTM
 
-end subroutine RTM
+        subroutine modelagem (nx, nz, nt, dx, dz, dt, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
+            integer ::  nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order
+            real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx)
+            real,dimension (:)     :: fonte(nt)
 
+            real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
+            real, allocatable    ::   coef(:)
+            real                 :: dt, dz, dx
 
-subroutine modelagem (is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg)
-  implicit none
-  integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order
-   real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx)
-   real,dimension (:)     :: fonte(nt)
+            order = 8
 
-   real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:)
-   real, allocatable	::   coef(:)
-   real                 :: dt, dz, dx, fmax
-  
+            allocate(cext(nzb,nxb))
+            allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
+            allocate(coef(order+1))
 
-   order = 8
+            call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
 
+            call calc_coef(order, coef)
 
-   allocate(cext(nzb,nxb))
-   allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
-   allocate(coef(order+1))
+            !$acc kernels
+            p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0.
+            !$acc end kernels
 
-   call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
+            do it = 1, nt
 
-   call calc_coef(order, coef) 
+                call atenuacao (nxb,nzb,nb,p0)
+                call atenuacao (nxb,nzb,nb,p1)
 
-   p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. 
+                call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
-   
-   do it = 1, nt
-  
-      call atenuacao (nxb,nzb,nb,p0)
-      call atenuacao (nxb,nzb,nb,p1)
+                !$acc kernels
+                p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
+                p2(sz,sx) = p2(sz,sx) + fonte(it)
 
-      call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
 
-       p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
+                scg(it,:) = p2(rsz,nb+1:nx+nb)
+                !$acc end kernels
 
-       p2(sz,sx) = p2(sz,sx) + fonte(it)
+                p0 = p1
+                p1 = p2
 
-     
-       scg(it,:) = p2(rsz,nb+1:nx+nb)
+            end do
 
-	p0 = p1
-	p1 = p2
+            deallocate (p0, p2, p1, L, cext, coef)
 
+        end subroutine modelagem
 
-    end do
+        subroutine RTM_DFT(nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
+            integer ::  nzb, nxb, it, sz, sx, nb, nt, nz, nx, rsz, order, nw, iw, nw_i, nw_f
+            real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
+            real,dimension (:)     :: fonte(nt)
 
+            real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:), kr(:,:), ki(:,:)
+            real, allocatable :: pr0(:,:), pr1(:,:), pr2(:,:), Lr(:,:)
+            !real, allocatable :: CF(:,:,:)
+            real, allocatable    ::   coef(:), w(:)
+            real                 :: dt, dz, dx, df, fmin, fmax
 
+            real, allocatable :: psr(:,:,:), psi(:,:,:), prr(:,:,:), pri(:,:,:)
 
- deallocate (p0, p2, p1, L, cext, coef)
+            df = 1./(nt*dt)
 
-end subroutine modelagem
+            order = 8
 
+            fmin=0
+            nw_i = int(fmin / df)
+            nw_f = int(fmax / df) +1
+            nw = (nw_f-nw_i) +1
 
+            !nw = nt/2 + 1
 
-subroutine RTM_DFT(is,nx, nz, nt, dx, dz, dt, fmax, fonte, nb, nxb, nzb, sx, sz, rsz, csuav, scg, Im)
-  implicit none
-  integer ::  nzb, nxb,isnap,is, i, j, ix, iz, it, sz, sx, nb, nt, nz, nx, rsz, dsx, order, nw, iw, nw_i, nw_f 
-   real, dimension(:,:) :: csuav(nz,nx), scg(nt,nx), Im(nzb,nxb)
-   real,dimension (:)     :: fonte(nt)
+            write(*,*) "nw", nw
 
-   real, allocatable :: p0(:,:), p1(:,:), p2(:,:),cext(:,:), L(:,:), kr(:,:), ki(:,:)
-   real, allocatable :: pr0(:,:), pr1(:,:), pr2(:,:), Lr(:,:)
-   !real, allocatable :: CF(:,:,:)
-   real, allocatable	::   coef(:), w(:)
-   real                 :: dt, dz, dx, df, fmin, fmax
+            allocate(cext(nzb,nxb))
+            allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
+            allocate(pr0(nzb,nxb),pr1(nzb,nxb),pr2(nzb,nxb),Lr(nzb,nxb))
+            allocate(coef(order+1))
+            !allocate(CF(nz,nx,nt))
+            allocate(w(nw), kr(nw,nt), ki(nw,nt))
+            allocate(psr(nzb,nxb, nw), psi(nzb,nxb,nw), prr(nzb,nxb, nw), pri(nzb,nxb, nw))
 
-   real, allocatable :: psr(:,:,:), psi(:,:,:), prr(:,:,:), pri(:,:,:)
+            call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
 
-   df = 1./(nt*dt)
-  
+            call calc_coef(order, coef)
 
-   order = 8
+            !$acc kernels
+            p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. ; Im = 0.
 
-   fmin=0
-   nw_i = int(fmin / df)
-   nw_f = int(fmax / df) +1
-   nw = (nw_f-nw_i) +1
+            pr0  =  0. ; pr1  =  0. ; pr2  =  0. ; Lr = 0.
 
-   !nw = nt/2 + 1
+            psr = 0. ; psi=0. ; prr=0. ; pri = 0.
+            !$acc end kernels
 
-   write(*,*) "nw", nw
+            !$acc parallel loop
+            do iw = 1, nw
+                w(iw) = 2.*acos(-1.)*((iw-1)*df)*dt  ! Vetor de frequências
+            end do
 
-   
+            !$acc parallel loop collapse(2)
+            do it = 1, nt
+                do iw = 1, nw
+                    kr(iw, it) = cos(w(iw)*(it-1)) ! Kernel parte real
+                    ki(iw, it) = sin(w(iw)*(it-1)) ! Kernel parte imaginária
+                end do
+            end do
 
+            do it = 1, nt
 
-   allocate(cext(nzb,nxb))
-   allocate(p0(nzb,nxb), p1(nzb,nxb), p2(nzb,nxb),L(nzb,nxb))
-   allocate(pr0(nzb,nxb),pr1(nzb,nxb),pr2(nzb,nxb),Lr(nzb,nxb))
-   allocate(coef(order+1))
-   !allocate(CF(nz,nx,nt))
-   allocate(w(nw), kr(nw,nt), ki(nw,nt))
-   allocate(psr(nzb,nxb, nw), psi(nzb,nxb,nw), prr(nzb,nxb, nw), pri(nzb,nxb, nw))
+                call atenuacao (nxb,nzb,nb,p0, thread=1)
+                call atenuacao (nxb,nzb,nb,p1, thread=1)
 
-   call makevelextend(nz,nx,nzb,nxb,nb,csuav,cext)
+                call op_l(order,coef, nzb,nxb,dz,dx,p1,L, thread=1)
 
-   call calc_coef(order, coef) 
+                !$acc kernels async(1)
+                p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
 
-   p0  =  0. ; p1  =  0. ; p2  =  0. ; L = 0. ; Im = 0.
+                p2(sz,sx) = p2(sz,sx) + fonte(it)
+                !$acc end kernels
 
-   pr0  =  0. ; pr1  =  0. ; pr2  =  0. ; Lr = 0.
+                call atenuacao (nxb,nzb,nb,pr0, thread=2)
+                call atenuacao (nxb,nzb,nb,pr1, thread=2)
 
-   psr = 0. ; psi=0. ; prr=0. ; pri = 0.
+                call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr, thread=2)
 
-   do iw = 1, nw
-     w(iw) = 2.*acos(-1.)*((iw-1)*df)*dt  ! Vetor de frequências
-   end do
+                !$acc kernels async(2)
+                pr2 = 2*pr1 - pr0 + (dt**2)*(cext**2)*Lr
 
+                pr2(rsz,nb+1:nx+nb) = pr2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
+                !$acc end kernels
 
+                !psr = 0. ; psi = 0. ; prr = 0. ; pri = 0.
 
-   do it = 1, nt
-     do iw = 1, nw
-       kr(iw, it) = cos(w(iw)*(it-1)) ! Kernel parte real
-       ki(iw, it) = sin(w(iw)*(it-1)) ! Kernel parte imaginária
-     end do
-   end do
-   
-   do it = 1, nt
-  
-      call atenuacao (nxb,nzb,nb,p0)
-      call atenuacao (nxb,nzb,nb,p1)
+                !$acc wait(1,2)
 
-      call op_l(order,coef, nzb,nxb,dz,dx,p1,L)
+                !$acc kernels
+                do iw = 1, nw
 
-      p2 = 2*p1 - p0 + (dt**2)*(cext**2)*L
+                    psr(:,:,iw) = psr(:,:,iw) + kr(iw, it)*p2  ! Aplica kernel parte real campo da fonte
+                    psi(:,:,iw) = psi(:,:,iw) + ki(iw, it)*p2  ! Aplica kernel parte imaginária campo da fonte
 
-      p2(sz,sx) = p2(sz,sx) + fonte(it)
+                    prr(:,:,iw) = prr(:,:,iw) + kr(iw, it)*pr2 ! Aplica kernel parte real campo receptor
+                    pri(:,:,iw) = pri(:,:,iw) + ki(iw, it)*pr2 ! Aplica kernel parte imaginária campo receptor
 
-      call atenuacao (nxb,nzb,nb,pr0)
-      call atenuacao (nxb,nzb,nb,pr1)
+                    Im = Im +  w(iw)*w(iw)*(psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
 
-      call op_l(order,coef, nzb,nxb,dz,dx,pr1,Lr)
+                    !Im = Im + (psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
 
-      pr2 = 2*pr1 - pr0 + (dt**2)*(cext**2)*Lr
+                end do
+                !$acc end kernels
 
-      pr2(rsz,nb+1:nx+nb) = pr2(rsz,nb+1:nx+nb) + scg(nt-it+1,:)
-       
-      !psr = 0. ; psi = 0. ; prr = 0. ; pri = 0. 
+                p0 = p1
+                p1 = p2
 
-      do iw = 1, nw
- 
-        psr(:,:,iw) = psr(:,:,iw) + kr(iw, it)*p2  ! Aplica kernel parte real campo da fonte
-        psi(:,:,iw) = psi(:,:,iw) + ki(iw, it)*p2  ! Aplica kernel parte imaginária campo da fonte
+                pr0 = pr1
+                pr1 = pr2
 
-        prr(:,:,iw) = prr(:,:,iw) + kr(iw, it)*pr2 ! Aplica kernel parte real campo receptor
-        pri(:,:,iw) = pri(:,:,iw) + ki(iw, it)*pr2 ! Aplica kernel parte imaginária campo receptor
-	
-	Im = Im +  w(iw)*w(iw)*(psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
+           end do
 
-	!Im = Im + (psr(:,:,iw)*prr(:,:,iw) - psi(:,:,iw)*pri(:,:,iw)) ! Condição de imagem
+           deallocate (p0, p2, p1, L, cext, coef, w, kr, ki)
+           deallocate(psr, psi, prr, pri)
+           deallocate (pr0,pr1,pr2,Lr)
 
+        end subroutine RTM_DFT
 
-      end do
+        subroutine atenuacao(nxb,nzb,nb,p2,thread)
+            integer,intent(in) :: nxb, nzb, nb
+            real, intent(in)   :: p2(nzb,nxb)
+            integer            :: i, j, a
+            integer, optional :: thread
 
-      p0 = p1
-      p1 = p2
+            if (present(thread)) then
+                a = thread
+            else
+                a = 1
+            end if
 
-      pr0 = pr1
-      pr1 = pr2
+            !$acc kernels async(a)
+            do concurrent (i=1:nb, j=1:nxb)
+                    p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            do concurrent (i=1:nb, j=1:nxb)
+                    p2(nzb-i+1,j)=p2(nzb-i+1,j)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            do concurrent (i=1:nb, j=1:nzb)
+                    p2(j,i)=p2(j,i)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            do concurrent (i=1:nb, j=1:nzb)
+                    p2(j,nxb-i+1)=p2(j,nxb-i+1)*(exp(-1*(0.0005*(nb-i))))**2
+            enddo
+            !$acc end kernels
 
-    end do
+            !$acc wait(1)
 
+            return
+        end subroutine atenuacao
 
- deallocate (p0, p2, p1, L, cext, coef, w, kr, ki)
- deallocate(psr, psi, prr, pri)
- deallocate (pr0,pr1,pr2,Lr)
+        subroutine makevelextend(nz,nx,nzb,nxb,nb,c,cext)
+            integer               :: nz,nx,nb,nzb,nxb,iz,ix
+            real, dimension (:,:) :: c(nz,nx), cext(nzb,nxb)
 
-end subroutine RTM_DFT
+            !Região Central
 
+            cext(nb+1:nz+nb,nb+1:nx+nb)=c(:,:)
 
+            !Lado Superior e Inferior
+            do ix=1,nx
+                do iz=1,nb
+                    cext(iz,nb+ix)=c(1,ix)        !Lado Superior
+                    cext(nz+iz+nb,nb+ix)=c(nz,ix)    !Lado Inferior
+                enddo
+            enddo
 
+            !Lado Esquerdo e Direito
+            do iz=1,nzb
+                do ix=1,nb
+                    cext(iz,ix)=cext(iz,nb+1)        !Lado Esquerdo
+                    cext(iz,ix+nx+nb)=cext(iz,nb+nx)    !Lado Direito
+                enddo
+            enddo
 
-subroutine atenuacao(nxb,nzb,nb,p2)
+            return
+        end subroutine makevelextend
 
-real, dimension (:,:) :: p2(nzb,nxb)
 
-lz=nzb
-do i =1,nb
-   do j=1,nxb
-          p2(i,j)=p2(i,j)*(exp(-1*(0.0005*(nb-i))))**2
-        p2(lz,j)=p2(lz,j)*(exp(-1*(0.0005*(nb-i))))**2
-    enddo
-    lz=lz-1
-enddo
+        !====================================================================================
+        !                            Subrotina que faz a fonte
+        !====================================================================================
+        subroutine source(nt, dt, fpeak, fonte)
 
-lx=nxb
-do i =1,nb
-   do j=1,nzb
-          p2(j,i)=p2(j,i)*(exp(-1*(0.0005*(nb-i))))**2
-    p2(j,lx)=p2(j,lx)*(exp(-1*(0.0005*(nb-i))))**2
-   enddo
-   lx=lx-1
-enddo
+            integer            :: nt
+            real               :: dt, fpeak
+            real, dimension(:) :: fonte(nt)
 
- 
-return
-end subroutine atenuacao
+            integer :: i
+            real    :: tdelay, t, wpeak, waux, tt
+            real    :: pi=3.141592653589793238462643383279502884197
 
-subroutine makevelextend(nz,nx,nzb,nxb,nb,c,cext)
+            wpeak = 2.*pi*fpeak
+            waux  = 0.5*wpeak
+            tdelay = 6./(5.*fpeak)
 
-implicit none
-real, dimension (:,:)     :: c(nz,nx), cext(nzb,nxb)
-integer         :: nz,nx,nb,nzb,nxb,iz,ix
+            do i = 1,nt
+                t = (i-1)*dt
+                tt = t - tdelay
 
-!Região Central
+                fonte(i) = exp(-waux*waux*tt*tt/4.)*cos(wpeak*tt)
+            end do
 
-  cext(nb+1:nz+nb,nb+1:nx+nb)=c(:,:)  
+        end subroutine source
 
-!Lado Superior e Inferior
-  do ix=1,nx
-    do iz=1,nb
-        cext(iz,nb+ix)=c(1,ix)        !Lado Superior
-        cext(nz+iz+nb,nb+ix)=c(nz,ix)    !Lado Inferior
-    enddo
-  enddo
+        !==================================================================
+        !            Subrotina que gera o vetor do tapering
+        !==================================================================
+        subroutine get_sponge(ctap, lsp, frac)
 
-!Lado Esquerdo e Direito
-  do iz=1,nzb
-    do ix=1,nb
-        cext(iz,ix)=cext(iz,nb+1)        !Lado Esquerdo
-        cext(iz,ix+nx+nb)=cext(iz,nb+nx)    !Lado Direito
-    enddo
-  enddo
+            integer            :: lsp
+            real               :: frac
+            real, dimension(:) :: ctap(lsp)
 
-return
-end subroutine makevelextend
+            integer :: i
+            real    :: dfrac
 
+            if (frac .le. 0.0) then
+                ctap = 0.0
+                return
+            endif
 
-!====================================================================================
-!			     Subrotina que faz a fonte
-!====================================================================================
-  subroutine source(nt, dt, fpeak, fonte)
+            dfrac = sqrt(-log(frac))/(1.*lsp)
 
-  implicit none
-  integer            :: nt
-  real               :: dt, fpeak
-  real, dimension(:) :: fonte(nt)
+            do i=1,lsp
+                ctap(i) = exp(-((dfrac*(lsp-i+1.))**2))
+            enddo
 
-  integer :: i
-  real    :: tdelay, t, wpeak, waux, tt
-  real    :: pi=3.141592653589793238462643383279502884197
-  
-  wpeak = 2.*pi*fpeak
-  waux  = 0.5*wpeak
-  tdelay = 6./(5.*fpeak)
+            return
+        end subroutine get_sponge
 
-  do i = 1,nt
-  	t = (i-1)*dt
-  	tt = t - tdelay
-  
-  	fonte(i) = exp(-waux*waux*tt*tt/4.)*cos(wpeak*tt)
-  end do
+        !==================================================================
+        !            Subrotina que aplica o tapering na borda
+        !==================================================================
+        subroutine taper_apply(pp, nxb, nzb, nb, taper)
 
-  end subroutine source
+            integer              :: nxb, nzb, nb
+            real, dimension(:,:) :: pp(nzb,nxb), taper(nb)
 
-!==================================================================
-!	     Subrotina que gera o vetor do tapering
-!==================================================================
-  subroutine get_sponge(ctap, lsp, frac)
+            integer :: ix, iz, jlx, jlz
 
-  implicit none
-  integer            :: lsp
-  real               :: frac
-  real, dimension(:) :: ctap(lsp)
+            jlx = nxb
+            do ix=1,nb
+                do iz=1,nzb
+                    pp(iz,ix) = pp(iz,ix)*taper(ix)
+                    pp(iz,jlx) = pp(iz,jlx)*taper(ix)
+                enddo
+                jlx = jlx-1
+            enddo
 
-  integer :: i
-  real    :: dfrac
+            do ix=1,nxb
+                jlz = nzb
+                do iz=1,nb
+                    pp(iz,ix) = pp(iz,ix)*taper(iz)
+                    pp(jlz,ix) = pp(jlz,ix)*taper(iz)
+                    jlz = jlz-1
+                enddo
+            enddo
 
-  if (frac .le. 0.0) then
-     ctap = 0.0
-     return
-  endif
+            return
+        end subroutine taper_apply
 
-  dfrac = sqrt(-log(frac))/(1.*lsp)
+        subroutine calc_coef(a, coef)
 
-  do i=1,lsp
-  	ctap(i) = exp(-((dfrac*(lsp-i+1.))**2))
-  enddo
+            integer :: a
+            real, dimension (:) :: coef(a+1)
 
-  return
-  end subroutine get_sponge
+            !    n=2
+            if(a.eq.(2))then
+                coef(1) = 1.
+                coef(2) = -2.
+                coef(3) = 1.
+            endif
 
-!==================================================================
-!	     Subrotina que aplica o tapering na borda
-!==================================================================
-  subroutine taper_apply(pp, nxb, nzb, nb, taper)
+            !    n=4
+            if(a.eq.(4))then
+                coef(1) = (-1.)/12.
+                coef(2) = (4.)/3.
+                coef(3) = (-5.)/2.
+                coef(4) = (4.)/3.
+                coef(5) = (-1.)/12.
+            endif
 
-  implicit none
-  integer              :: nxb, nzb, nb
-  real, dimension(:,:) :: pp(nzb,nxb), taper(nb)
+            !    n=6
+            if(a.eq.(6))then
+                coef(1) = 1./90.
+                coef(2) = (-3.)/20.
+                coef(3) = 3./2.
+                coef(4) = (-49.)/18.
+                coef(5) = 3./2.
+                coef(6) = (-3.)/20.
+                coef(7) = 1./90.
+            endif
 
-  integer :: ix, iz, jlx, jlz
+            !    n=8
+            if(a.eq.(8))then
+                coef(1) = -1./560.
+                coef(2) = 8./315.
+                coef(3) = (-1.)/5.
+                coef(4) = 8./5.
+                coef(5) = (-205.)/72.
+                coef(6) = 8./5.
+                coef(7) = (-1.)/5.
+                coef(8) = 8./315.
+                coef(9) = -1./560.
+            endif
 
-  jlx = nxb
-  do ix=1,nb
-  	do iz=1,nzb
-  		pp(iz,ix) = pp(iz,ix)*taper(ix)
-  		pp(iz,jlx) = pp(iz,jlx)*taper(ix)
-  	enddo
-  	jlx = jlx-1
-  enddo
+        end subroutine calc_coef
 
-  do ix=1,nxb
-  	jlz = nzb
-   	do iz=1,nb
-  		pp(iz,ix) = pp(iz,ix)*taper(iz)
-  		pp(jlz,ix) = pp(jlz,ix)*taper(iz)
-  		jlz = jlz-1
-  	enddo
-  enddo
+        subroutine op_l(a,coef, nz,nx,dz,dx,P,lap_P, thread)
+            !Subrotina que calcula o laplaciano para as ordens 2, 4, 6 e 8.
+            !nx=número de amostra no eixo x parâmetro de entrada
+            !nz=número de amostra no eixo x parâmetro de entrada
+            !lapla = Matriz de saída representando o laplaciano
 
-  return
-  end subroutine taper_apply
+            integer :: i, j, k, nx, nz, a, lim_nx, lim_nz, in_n, aux
+            real :: lap_P, dx, dz, Pxx, Pzz, P
+            real, dimension(:)  :: coef(a+1)
+            integer, optional :: thread
+            dimension P(nz,nx), lap_P(nz,nx)
 
+            if (present(thread)) then
+                aux = thread
+            else
+                aux = 1
+            end if
 
-subroutine calc_coef(a, coef)
+            in_n = (a/2)+1
 
-integer :: a
-real, dimension (:) :: coef(a+1)
+            lim_nx = nx-(a/2)
+            lim_nz = nz-(a/2)
 
-!    n=2
-    if(a.eq.(2))then
-    coef(1) = 1.
-    coef(2) = -2.
-    coef(3) = 1.
-    endif
+            !$acc parallel loop collapse(2) private(Pxx, Pzz) independent async(aux)
+            do i=in_n,lim_nx
+                do j=in_n,lim_nz
 
-!    n=4
-    if(a.eq.(4))then
-    coef(1) = (-1.)/12.
-    coef(2) = (4.)/3.
-    coef(3) = (-5.)/2.
-    coef(4) = (4.)/3.
-    coef(5) = (-1.)/12.
-    endif
+                    Pxx = 0.0
+                    Pzz = 0.0
 
-!    n=6
-    if(a.eq.(6))then
-    coef(1) = 1./90.
-    coef(2) = (-3.)/20.
-    coef(3) = 3./2.
-    coef(4) = (-49.)/18.
-    coef(5) = 3./2.
-    coef(6) = (-3.)/20.
-    coef(7) = 1./90.
-    endif    
+                    do k=1,a+1
 
-!    n=8
-    if(a.eq.(8))then
-    coef(1) = -1./560.    
-    coef(2) = 8./315.
-    coef(3) = (-1.)/5.
-    coef(4) = 8./5.
-    coef(5) = (-205.)/72.
-    coef(6) = 8./5.
-    coef(7) = (-1.)/5.
-    coef(8) = 8./315.
-    coef(9) = -1./560.
-    endif
+                        Pxx = Pxx + coef(k)*P(j,i+k-in_n)
+                        Pzz = Pzz + coef(k)*P(j+k-in_n,i)
 
-end subroutine calc_coef
+                    enddo
 
-SUBROUTINE op_l(a,coef, nz,nx,dz,dx,P,lap_P)
-!Subrotina que calcula o laplaciano para as ordens 2, 4, 6 e 8.
-!nx=número de amostra no eixo x parâmetro de entrada
-!nz=número de amostra no eixo x parâmetro de entrada
-!lapla = Matriz de saída representando o laplaciano
+                    lap_p(j,i) = Pxx/(dx**2) + Pzz/(dz**2)
 
-integer :: i, j, k, nx, nz, a, lim_nx, lim_nz, in_n
-REAL :: lap_P, dx, dz, Pxx, Pzz, P
-real, dimension(:)  :: coef(a+1)
+                enddo
+            enddo
 
-DIMENSION P(nz,nx), lap_P(nz,nx)
-        
-in_n = (a/2)+1
+            return
+        end subroutine op_l
 
-lim_nx = nx-(a/2)
-lim_nz = nz-(a/2)
-
-
-DO i=in_n,lim_nx
-
-    Do j=in_n,lim_nz
-
-        Pxx = 0.0
-        Pzz = 0.0
-
-        Do k=1,a+1
-
-	      Pxx = Pxx + coef(k)*P(j,i+k-in_n)
-        Pzz = Pzz + coef(k)*P(j+k-in_n,i)
-		    
-        ENDDO
-
-    lap_p(j,i) = Pxx/(dx**2) + Pzz/(dz**2)
-
-    ENDDO
-ENDDO
-
-
-RETURN
-END SUBROUTINE op_l
-
-  
-END MODULE mdle_adds
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+end module mdle_adds
